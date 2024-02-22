@@ -1,6 +1,6 @@
 # js-maid 🕵️ - Your JavaScript Investigator
 
-Welcome to js-maid, the ultimate tool for security researchers, bug bounty hunters, and developers dedicated to investigating JavaScript code. Uncover potential security risks and gain deeper insights into your code's behavior.
+js-maid started off as an idea to break down JavaScript into an AST (kinda like a blueprint) and then run some smart checks on it. It's a handy little tool for folks diving into code, looking for bugs, or just trying to get a grip on what's happening under the hood.
 
 ## Install Bun.sh
 
