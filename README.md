@@ -1,5 +1,7 @@
 # js-maid 🕵️ - Your JavaScript Investigator
 
+⚠️ This tool doesn't handle obfuscated or packed Javascript files ⚠️
+
 js-maid started off as an idea to break down JavaScript into an AST (kinda like a blueprint) and then run some smart checks on it. It's a handy little tool for folks diving into code, looking for bugs, or just trying to get a grip on what's happening under the hood.
 
 ## Install Bun.sh
