@@ -1,7 +1,7 @@
 /**
  * Represents a datasource that can load files.
  */
-export interface IDatasource {
+export interface Datasource {
   /**
    * Loads files based on the provided input.
    * @param input - The input to use for loading files.

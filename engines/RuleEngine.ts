@@ -1,13 +1,13 @@
 import { ProcessingContext } from "../contexts/ProcessingContext";
-import type { IRule } from "../interfaces/IRule";
+import type { Rule } from "../interfaces/Rule";
 import type MatchingRule from "../rules/MatchingRule";
 
 export default class RuleEngine {
-  private rules: IRule[] = [];
+  private rules: Rule[] = [];
 
   constructor(private ast: any) {}
 
-  addRule(rule: IRule): RuleEngine {
+  addRule(rule: Rule): RuleEngine {
     this.rules.push(rule);
     return this;
   }

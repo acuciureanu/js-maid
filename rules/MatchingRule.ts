@@ -6,7 +6,7 @@ export default class MatchingRule {
     applyMatch(nodeValue: string, context: ProcessingContext) {
       const matches = nodeValue.match(this.pattern);
       if (matches) {
-        matches.forEach((match) => context.addData(this.type, match));
+        matches.forEach((match: any) => context.addData(this.type, match));
       }
     }
   }

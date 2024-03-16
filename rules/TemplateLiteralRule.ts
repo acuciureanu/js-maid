@@ -1,11 +1,11 @@
-import type { IRule } from "../interfaces/IRule";
+import type { Rule } from "../interfaces/Rule";
 import type { ProcessingContext } from "../contexts/ProcessingContext";
 import type MatchingRule from "./MatchingRule";
 
 /**
  * Represents a rule that applies to template literals.
  */
-export default class TemplateLiteralRule implements IRule {
+export default class TemplateLiteralRule implements Rule {
   apply(node: any, context: ProcessingContext, matchingRules: MatchingRule[]): ProcessingContext {
     if (node.type === "TemplateLiteral") {
       let combinedParts = "";

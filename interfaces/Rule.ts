@@ -4,7 +4,7 @@ import type MatchingRule from "../rules/MatchingRule";
 /**
  * Represents a rule that can be applied to a node.
  */
-export interface IRule {
+export interface Rule {
   /**
    * Applies the rule to the given node.
    * @param node The node to apply the rule to.
