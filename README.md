@@ -18,7 +18,7 @@ Check this out: [Bun.sh installation instructions](https://bun.sh/docs/installat
 Get started with js-maid by installing the necessary dependencies:
 
 ```bash
-bun install
+npm install
 ```
 
 ## Running js-maid 🏃
