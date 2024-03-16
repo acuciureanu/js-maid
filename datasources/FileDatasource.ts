@@ -1,9 +1,9 @@
 import * as FileExtensions from "../constants/FileExtensions";
 import fs from "fs";
 import path from "path";
-import type * as IDatasource from "../interfaces/IDatasource";
+import type * as IDatasource from "../interfaces/Datasource";
 
-export default class FileDatasource implements IDatasource.IDatasource {
+export default class FileDatasource implements IDatasource.Datasource {
   loadFiles(input: string): {
     path: string; filePath: string; fileContent: string 
 }[] {

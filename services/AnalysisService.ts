@@ -5,6 +5,7 @@ import LiteralRule from "../rules/LiteralRule";
 import ReferenceResolverRule from "../rules/ReferenceResolverRule";
 import TemplateLiteralRule from "../rules/TemplateLiteralRule";
 import MatchingRule from "../rules/MatchingRule";
+import type { AnalysisResult } from "../models/AnalysisResult";
 
 class AnalysisService {
   private targetPath: string;
@@ -13,16 +14,24 @@ class AnalysisService {
     this.targetPath = targetPath;
   }
 
-  public run(matchingRules: MatchingRule[]): { filename: string, matches: { [ruleType: string]: string[] } }[] {
+  /**
+   * Runs the analysis on the target files using the provided matching rules.
+   * @param matchingRules - An array of matching rules to apply during the analysis.
+   * @returns A promise that resolves to an array of analysis results.
+   */
+  public async run(matchingRules: MatchingRule[]): Promise<AnalysisResult[]> {
     const files = new FileDatasource().loadFiles(this.targetPath);
-    const results: { filename: string, matches: { [ruleType: string]: string[] } }[] = [];
-    files.forEach(file => {
+    const results: AnalysisResult[] = [];
+
+    files.forEach((file) => {
       try {
         const ast = acorn.parse(file.fileContent, {
           ecmaVersion: "latest",
           sourceType: "module",
         });
 
+        // Create a new rule engine and add the rules to it
+        // If you add a new rule, you need to add it here too
         const engine = new RuleEngine(ast)
           .addRule(new LiteralRule())
           .addRule(new TemplateLiteralRule())
@@ -30,23 +39,33 @@ class AnalysisService {
 
         const context = engine.process(matchingRules);
 
-        const fileMatches: { [ruleType: string]: string[] } = {};
-        matchingRules.forEach(rule => {
-          fileMatches[rule.type] = context.getData(rule.type);
+        const fileMatches: { [ruleType: string]: Set<string> | string[] } = {};
+        matchingRules.forEach((rule) => {
+          const ruleData = context.getData(rule.type);
+          fileMatches[rule.type] =
+            rule.type === "endpoints" ? new Set(ruleData) : ruleData;
         });
 
-        if (Object.values(fileMatches).some(matches => matches.length > 0)) {
-          results.push({ filename: file.filePath, matches: fileMatches });
+        const hasMatches = Object.values(fileMatches).some((matches) =>
+          matches instanceof Set ? matches.size > 0 : matches.length > 0
+        );
+        if (hasMatches) {
+          const finalMatches: { [ruleType: string]: string[] } = {};
+          Object.entries(fileMatches).forEach(([ruleType, matches]) => {
+            finalMatches[ruleType] = Array.from(matches);
+          });
+          results.push({ filename: file.filePath, matches: finalMatches });
         }
-
       } catch (error) {
-        // Nothing to catch here
+        console.error(
+          `An error occurred while analyzing file ${file.filePath}:`,
+          error
+        );
       }
     });
 
     return results;
   }
-
 }
 
 export default AnalysisService;

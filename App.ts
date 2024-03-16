@@ -1,57 +1,65 @@
-import AnalysisService from "./services/AnalysisService";
-import chalk from "chalk";
-import os from "os";
+import fs from "fs";
 import path from "path";
-import MatchingRule from "./rules/MatchingRule";
 import { urlPattern } from "./patterns/UrlPatterns";
 import { secretsPatterns } from "./patterns/SecretsPatterns";
+import MatchingRule from "./rules/MatchingRule";
+import AnalysisService from "./services/AnalysisService";
+import UnpackingService from "./services/UnpackingService";
+import type { AnalysisResult } from "./models/AnalysisResult";
+import { parseArgs, usage } from "./utils/CliUtil";
 
-function usage() {
-  let toolName = path.basename(process.argv[1]);
+const matchingRules: MatchingRule[] = [
+  new MatchingRule("endpoints", urlPattern),
+  new MatchingRule("secrets", secretsPatterns),
+];
 
-  if (toolName.endsWith('.ts')) {
-    toolName = `bun run ${toolName}`;
-  } else {
-    if (os.platform() === 'win32' && !toolName.endsWith('.exe')) {
-      toolName += '.exe';
+async function performAnalysis(
+  targetPath: string,
+  outputDirPath: string
+): Promise<void> {
+  const analysisService = new AnalysisService(targetPath);
+  try {
+    const results: AnalysisResult[] = await analysisService.run(matchingRules);
+    console.log(results);
+
+    if (!fs.existsSync(outputDirPath)) {
+      fs.mkdirSync(outputDirPath, { recursive: true });
     }
-    if (os.platform() !== 'win32') {
-      toolName = `./${toolName}`;
-    }
+
+    const outputPath = path.join(outputDirPath, "analysisResults.json");
+    fs.writeFileSync(outputPath, JSON.stringify(results, null, 2), "utf8");
+  } catch (error) {
+    console.error("An error occurred during analysis:", error);
+  }
+}
+
+async function main() {
+  const { targetPath, unpack, deobfuscate, unminify, unpackOutputDirPath } =
+    parseArgs(process.argv.slice(2));
+
+  if (!targetPath) {
+    usage();
+    return;
   }
 
-  console.log(chalk.green(`Usage: ${toolName} <target-folder-or-file>`));
-  console.log();
-  console.log(`\nExamples:`);
-  console.log(`  1. Analyze a single JS file: ${chalk.yellow('📄')}`);
-  console.log(chalk.blue(`     ${toolName} ./path/to/file.js`));
-  console.log(`     This will analyze the file 'file.js' and output the report.`);
-  console.log();
-  console.log(
-    `  2. Analyze all TypeScript files in a directory (including subdirectories): ${chalk.yellow('📁')}`
-  );
-  console.log(chalk.blue(`     ${toolName} ./path/to/directory`));
-  console.log(`     This will analyze all JS files in the 'directory' and its subdirectories, and output a combined report.`);
-  console.log();
-  console.log(chalk.red(`Note: Make sure the path is correct. If the file or directory does not exist, the tool will not be able to analyze it.`));
+  try {
+    if (unpack || deobfuscate || unminify) {
+      const unpackingService = new UnpackingService(
+        targetPath,
+        unpackOutputDirPath
+      );
+      const unpackedPath = await unpackingService.unpack({
+        unpack,
+        deobfuscate,
+        unminify,
+      });
+      await performAnalysis(unpackedPath, unpackOutputDirPath);
+    } else {
+      await performAnalysis(targetPath, "unpacked");
+    }
+  } catch (error) {
+    console.error("An error occurred in main:", error);
+  }
 }
 
-if (
-  !process.argv[2] ||
-  process.argv.includes("-h") ||
-  process.argv.includes("--help")
-) {
-  usage();
-  process.exit(0);
-}
-
-const targetPath = process.argv[2];
-
-const analysisService = new AnalysisService(targetPath);
-
-const urlMatchingRule = new MatchingRule("endpoints", urlPattern);
-const secretsMatchingRule = new MatchingRule("secrets", secretsPatterns);
-
-const results = analysisService.run([urlMatchingRule, secretsMatchingRule]);
-
-console.log(results);
+main();

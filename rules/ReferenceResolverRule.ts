@@ -1,11 +1,11 @@
 import type { ProcessingContext } from "../contexts/ProcessingContext";
-import type { IRule } from "../interfaces/IRule";
+import type { Rule } from "../interfaces/Rule";
 import type MatchingRule from "./MatchingRule";
 
 /**
  * Implements the ReferenceResolverRule class that applies a rule to resolve references in a given node.
  */
-export default class ReferenceResolverRule implements IRule {
+export default class ReferenceResolverRule implements Rule {
   /**
    * Applies the ReferenceResolverRule to a given node in the processing context.
    * This rule resolves variable declarations and adds them to the references in the context.
