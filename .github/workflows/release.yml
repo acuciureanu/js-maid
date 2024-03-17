@@ -29,13 +29,13 @@ jobs:
             latest_tag="v0.0.0"
           fi
           echo "Latest tag: $latest_tag"
-
+          
           IFS='.' read -ra VERSION <<< "${latest_tag#v}"
           major=${VERSION[0]}
           minor=${VERSION[1]}
           patch=${VERSION[2]}
-
-          case "${{ github.event.inputs.release_type }}" in
+          
+          case ${{ github.event.inputs.release_type }} in
             major)
               major=$((major + 1))
               minor=0
@@ -49,10 +49,11 @@ jobs:
               patch=$((patch + 1))
               ;;
           esac
-
+          
           new_version="v${major}.${minor}.${patch}"
           echo "New version: $new_version"
           echo "::set-output name=new_version::$new_version"
+        shell: bash
 
   build_and_tag:
     needs: prepare
