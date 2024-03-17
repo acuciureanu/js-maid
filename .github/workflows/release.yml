@@ -73,18 +73,31 @@ jobs:
       - uses: actions/checkout@v4.1.2
         with:
           fetch-depth: 0
-          submodules: recursive  # Use this if your project has submodules
+          submodules: recursive
 
-      - name: Set up Bun
+      - name: Set up Bun (Linux and macOS)
+        if: matrix.os != 'windows-latest'
         run: |
           curl -fsSL https://bun.sh/install | bash
           echo "$HOME/.bun/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
-        run: bun install
+        run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            # Use npm or another package manager that works on Windows
+            npm install
+          else
+            bun install
+          fi
 
       - name: Build binary
-        run: bun build App.ts --compile --outfile=${{ env.BINARY_NAME }}-${{ matrix.os }}
+        run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            # Adjust or use alternative commands for Windows if necessary
+            echo "Adjust build command for Windows"
+          else
+            bun build App.ts --compile --outfile=${{ env.BINARY_NAME }}-${{ matrix.os }}
+          fi
         shell: bash
 
       - name: Upload binary
