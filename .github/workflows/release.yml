@@ -109,8 +109,8 @@ jobs:
       - name: Tag
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'actions@github.com'
+          git config --global user.name 'Alex Cuciureanu'
+          git config --global user.email 'alexandru.cuciureanu@com'
           git tag ${{ needs.prepare.outputs.new_version }}
           git push --tags origin ${{ needs.prepare.outputs.new_version }}
           env:
