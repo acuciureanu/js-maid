@@ -24,40 +24,48 @@ jobs:
         run: |
           git fetch --tags
           latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          if [[ -z "$latest_tag" ]]; then
+            echo "No tags found. Starting from v0.0.0."
+            latest_tag="v0.0.0"
+          fi
           echo "Latest tag: $latest_tag"
-          
-          # Assuming the tag is in 'v<major>.<minor>.<patch>' format
+
           IFS='.' read -ra VERSION <<< "${latest_tag#v}"
           major=${VERSION[0]}
           minor=${VERSION[1]}
           patch=${VERSION[2]}
 
-          if [ "${{ github.event.inputs.release_type }}" == "major" ]; then
-            major=$((major + 1))
-            minor=0
-            patch=0
-          elif [ "${{ github.event.inputs.release_type }}" == "minor" ]; then
-            minor=$((minor + 1))
-            patch=0
-          else
-            patch=$((patch + 1))
-          fi
+          case "${{ github.event.inputs.release_type }}" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch|*)
+              patch=$((patch + 1))
+              ;;
+          esac
 
           new_version="v${major}.${minor}.${patch}"
           echo "New version: $new_version"
           echo "::set-output name=new_version::$new_version"
-          
+
   build_and_tag:
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     env:
       BINARY_NAME: js-maid
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.1.2
         with:
+          fetch-depth: 0
           submodules: recursive  # Use this if your project has submodules
 
       - name: Set up Bun
@@ -78,8 +86,10 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ matrix.os }}
           path: ./${{ env.BINARY_NAME }}-${{ matrix.os }}
 
-      - name: Tag the repository
+      - name: Tag
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
           git tag ${{ needs.prepare.outputs.new_version }}
           git push origin ${{ needs.prepare.outputs.new_version }}
