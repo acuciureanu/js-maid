@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: binary-${{ matrix.os }}-${{ needs.prepare.outputs.new_version }}
-          path: path/to/your/binary
+          path: ./js-maid
 
   tag:
     needs: build
