@@ -1,0 +1,152 @@
+name: Release and Build Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Type of release (patch, minor, major)"
+        required: true
+        default: "patch"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.set_version.outputs.new_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Calculate new version and set output
+        id: set_version # This ID is used to reference step outputs
+        run: |
+          git fetch --tags
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+
+          IFS='.' read -ra VERSION <<< "${latest_tag#v}"
+          major=${VERSION[0]:-0}
+          minor=${VERSION[1]:-0}
+          patch=${VERSION[2]:-0}
+
+          case ${{ github.event.inputs.release_type }} in
+            'major')
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            'minor')
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            'patch')
+              patch=$((patch + 1))
+              ;;
+          esac
+
+          new_version="v${major}.${minor}.${patch}"
+
+          while git rev-parse -q --verify "refs/tags/$new_version" >/dev/null; do
+            echo "$new_version already exists. Incrementing patch version..."
+            patch=$((patch + 1))
+            new_version="v${major}.${minor}.${patch}"
+          done
+
+          echo "New version: $new_version"
+          echo "new_version=$new_version" >> $GITHUB_ENV
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Set up Bun (Linux and macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
+      - name: Set up Bun (Windows)
+        if: matrix.os == 'windows-latest'
+        run: powershell -Command "irm bun.sh/install.ps1 | iex"
+
+      - name: Build binary (Linux and macOS)
+        if: matrix.os != 'windows-latest'
+        run: bun build App.ts --compile --outfile=js-maid
+
+      - name: Build binary (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          & "C:\Users\runneradmin\.bun\bin\bun.exe" build App.ts --compile --outfile=js-maid.exe
+
+      - name: Create zip (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: zip js-maid-${{ matrix.target }}-${{ needs.prepare.outputs.new_version }}.zip js-maid
+
+      - name: Create zip (macOS)
+        if: matrix.os == 'macos-latest'
+        run: zip js-maid-${{ matrix.target }}-${{ needs.prepare.outputs.new_version }}.zip js-maid
+
+      - name: Create zip (Windows)
+        if: matrix.os == 'windows-latest'
+        run: powershell Compress-Archive -Path js-maid.exe -DestinationPath js-maid-${{ matrix.target }}-${{ needs.prepare.outputs.new_version }}.zip
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: js-maid-${{matrix.os}}-${{ matrix.target }}-${{ needs.prepare.outputs.new_version }}
+          path: ./js-maid-${{ matrix.target }}-${{ needs.prepare.outputs.new_version }}.zip
+
+  tag_and_release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create and push tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag ${{ needs.prepare.outputs.new_version }}
+          git push origin ${{ needs.prepare.outputs.new_version }}
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./
+      - name: List directory contents
+        run: ls -la ./
+      - name: Create GitHub Release and Upload Binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            js-maid-ubuntu-latest-x86_64-unknown-linux-gnu-${{ needs.prepare.outputs.new_version }}/*
+            js-maid-windows-latest-x86_64-pc-windows-msvc-${{ needs.prepare.outputs.new_version }}/*
+            js-maid-macos-latest-x86_64-apple-darwin-${{ needs.prepare.outputs.new_version }}/*
+            js-maid-macos-latest-aarch64-apple-darwin-${{ needs.prepare.outputs.new_version }}/*
+          tag_name: ${{ needs.prepare.outputs.new_version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
