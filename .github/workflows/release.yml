@@ -1,0 +1,92 @@
+name: Release and Build Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release (patch, minor, major)'
+        required: true
+        default: 'patch'
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Calculate new version
+        id: version
+        run: |
+          git fetch --tags
+          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1` 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+          IFS='.' read -ra VERSION <<< "${latest_tag#v}"
+          major=${VERSION[0]}
+          minor=${VERSION[1]}
+          patch=${VERSION[2]}
+          case ${{ github.event.inputs.release_type }} in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+          new_version="v${major}.${minor}.${patch}"
+          echo "New version: $new_version"
+          echo "::set-output name=new_version::$new_version"
+
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build --if-present
+        env:
+          VERSION: ${{ needs.prepare.outputs.new_version }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: binary-${{ matrix.os }}-${{ needs.prepare.outputs.new_version }}
+          path: path/to/your/binary
+
+  tag:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+
+      - name: Create Git Tag
+        run: |
+          git tag ${{ needs.prepare.outputs.new_version }}
+          git push origin ${{ needs.prepare.outputs.new_version }}
