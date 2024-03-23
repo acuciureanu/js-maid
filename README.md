@@ -20,16 +20,16 @@ Note: Use the flags to enable specific features as needed.
 
 If you want to run the tool straight away, there are compiled binaries for you [here](https://github.com/acuciureanu/js-maid/releases/latest)
 
-## Install Bun.sh
-
-Check this out: [Bun.sh installation instructions](https://bun.sh/docs/installation)
-
 ## Features 🌟
 
 - **In-depth Analysis**: Thorough investigation of JavaScript code to identify patterns and potential vulnerabilities.
 - **Debundling**: Debundling, deobfuscation, unminifying through [webcrack](https://github.com/j4k0xb/webcrack)
 - **Custom Rules**: Utilize predefined rules to enhance your code investigation.
 - **Regex Guide**: Leverage detailed regex patterns to pinpoint specific code structures.
+
+## Install Bun.sh
+
+Check this out: [Bun.sh installation instructions](https://bun.sh/docs/installation)
 
 ## Installation 🛠
 
