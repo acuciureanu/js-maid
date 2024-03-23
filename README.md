@@ -2,6 +2,24 @@
 
 js-maid started off as an idea to break down JavaScript into an AST (something like a blueprint) and then run some smart checks on it. It's a handy little tool for folks diving into code, looking for bugs, or just trying to get a grip on what's happening under the hood.
 
+## Usage
+
+```sh
+Usage: js-maid <target-folder-or-file> [--unpack] [--deobfuscate] [--unminify] [--unpackOutputDir <path>]
+
+Options:
+  --unpack             Unpack the code before analysis
+  --deobfuscate        Deobfuscate the code before analysis
+  --unminify           Unminify the code before analysis
+  --unpackOutputDir    Specify the output directory for unpacked files (default: "unpacked")
+
+Note: Use the flags to enable specific features as needed.
+```
+
+## Download latest compiled binaries.
+
+If you want to run the tool straight away, there are compiled binaries for you [here](https://github.com/acuciureanu/js-maid/releases/latest)
+
 ## Install Bun.sh
 
 Check this out: [Bun.sh installation instructions](https://bun.sh/docs/installation)
