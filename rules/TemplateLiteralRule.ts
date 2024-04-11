@@ -24,7 +24,7 @@ export default class TemplateLiteralRule implements Rule {
 
       // Apply each matching rule to the combined template literal content
       matchingRules.forEach(rule => {
-        rule.applyMatch(combinedParts, context);
+        rule.apply(combinedParts, context);
       });
     }
 
