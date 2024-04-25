@@ -14,6 +14,9 @@ class UnpackingService {
    * @param outputDirPath - The path to the output directory.
    */
   constructor(inputBundlePath: string, outputDirPath: string) {
+    if (!fs.statSync(inputBundlePath).isFile()) {
+      throw new Error("inputBundlePath should be a path to a file, not a directory.");
+    }
     this.inputBundlePath = inputBundlePath;
     this.outputDirPath = outputDirPath;
   }

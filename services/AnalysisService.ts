@@ -1,71 +1,80 @@
-import * as acorn from "acorn";
-import FileDatasource from "../datasources/FileDatasource";
-import RuleEngine from "../engines/RuleEngine";
+import PrototypePollutionRule from "../rules/PrototypePollutionRule";
 import LiteralRule from "../rules/LiteralRule";
-import ReferenceResolverRule from "../rules/ReferenceResolverRule";
 import TemplateLiteralRule from "../rules/TemplateLiteralRule";
+import ReferenceResolverRule from "../rules/ReferenceResolverRule";
 import MatchingRule from "../rules/MatchingRule";
+import RuleEngine from "../engines/RuleEngine";
 import type { AnalysisResult } from "../models/AnalysisResult";
+import * as acorn from "acorn";
 
-class AnalysisService {
-  private targetPath: string;
-
-  constructor(targetPath: string) {
-    this.targetPath = targetPath;
-  }
-
-  /**
-   * Runs the analysis on the target files using the provided matching rules.
-   * @param matchingRules - An array of matching rules to apply during the analysis.
-   * @returns A promise that resolves to an array of analysis results.
-   */
-  public async run(matchingRules: MatchingRule[]): Promise<AnalysisResult[]> {
-    const files = new FileDatasource().loadFiles(this.targetPath);
-    const results: AnalysisResult[] = [];
-
-    files.forEach((file) => {
+export default class AnalysisService {
+  public async run(
+    fileData: { filePath: string; fileContent: string }[],
+    matchingRules: MatchingRule[],
+    rulesConfig: { [ruleName: string]: boolean }
+  ): Promise<AnalysisResult[]> {
+    console.log("Starting analysis of files");
+  
+    const results = await Promise.all(fileData.map(async ({ filePath, fileContent }) => {
+      console.log(`Processing file: ${filePath}`);
       try {
-        const ast = acorn.parse(file.fileContent, {
+        const ast = acorn.parse(fileContent, {
           ecmaVersion: "latest",
           sourceType: "module",
         });
-
-        // Create a new rule engine and add the rules to it
-        // If you add a new rule, you need to add it here too
+  
         const engine = new RuleEngine(ast)
           .addRule(new LiteralRule())
           .addRule(new TemplateLiteralRule())
           .addRule(new ReferenceResolverRule());
-
+  
+        if (rulesConfig["prototypePollution"]) {
+          console.log("Adding Prototype Pollution rule");
+          engine.addRule(new PrototypePollutionRule());
+        }
+  
         const context = engine.process(matchingRules);
-
-        const fileMatches: { [ruleType: string]: Set<string> | string[] } = {};
+        const fileMatches: { [ruleType: string]: Set<string> } = {};
+        let hasRuleMatches = false;
+  
         matchingRules.forEach((rule) => {
           const ruleData = context.getData(rule.type);
-          fileMatches[rule.type] =
-            rule.type === "endpoints" ? new Set(ruleData) : ruleData;
+          if (ruleData && ruleData.length > 0) {
+            fileMatches[rule.type] = new Set(ruleData);
+            hasRuleMatches = true;
+          }
         });
-
-        const hasMatches = Object.values(fileMatches).some((matches) =>
-          matches instanceof Set ? matches.size > 0 : matches.length > 0
-        );
-        if (hasMatches) {
-          const finalMatches: { [ruleType: string]: string[] } = {};
-          Object.entries(fileMatches).forEach(([ruleType, matches]) => {
+  
+        const finalMatches: { [ruleType: string]: string[] } = {};
+        Object.entries(fileMatches).forEach(([ruleType, matches]) => {
+          if (matches.size > 0) {
             finalMatches[ruleType] = Array.from(matches);
-          });
-          results.push({ filename: file.filePath, matches: finalMatches });
+          }
+        });
+    
+        const prototypePollutionFindings = context.getData("prototypePollutionFindings");
+        const hasPrototypePollutionFindings =
+          prototypePollutionFindings && prototypePollutionFindings.length > 0;
+  
+        if (hasRuleMatches || hasPrototypePollutionFindings) {
+            return {
+            filename: filePath,
+            matches: finalMatches,
+            prototypePollutionFindings: hasPrototypePollutionFindings
+              ? JSON.stringify(prototypePollutionFindings, null, 2)
+              : [],
+            };
         }
       } catch (error) {
         console.error(
-          `An error occurred while analyzing file ${file.filePath}:`,
+          `An error occurred while analyzing file ${filePath}:`,
           error
         );
       }
-    });
-
-    return results;
+      return null;
+    }));
+  
+    return results.filter((result): result is AnalysisResult => result !== null);
   }
+  
 }
-
-export default AnalysisService;

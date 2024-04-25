@@ -6,6 +6,13 @@ import type MatchingRule from "./MatchingRule";
  * Represents a rule that applies to template literals.
  */
 export default class TemplateLiteralRule implements Rule {
+  /**
+   * Applies the template literal rule to the given node.
+   * @param node - The node to apply the rule to.
+   * @param context - The processing context.
+   * @param matchingRules - The matching rules to apply.
+   * @returns The updated processing context.
+   */
   apply(node: any, context: ProcessingContext, matchingRules: MatchingRule[]): ProcessingContext {
     if (node.type === "TemplateLiteral") {
       let combinedParts = "";
