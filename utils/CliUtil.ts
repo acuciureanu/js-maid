@@ -1,8 +1,4 @@
-import chalk from "chalk";
-import os from "os";
-import path from "path";
-
-export function parseArgs(args: string[]) {
+export const parseArgs = (args: string[]) => {
   const targetPathIndex = args.findIndex((arg) => !arg.startsWith("--"));
   const outputDirIndex = args.findIndex((arg) =>
     arg.startsWith("--unpackOutputDir")
@@ -29,9 +25,9 @@ export function parseArgs(args: string[]) {
     unpackOutputDirPath: unpackOutputDirPath || "unpacked",
     rules: rules,
   };
-}
+};
 
-export function usage() {
+export const usage = () => {
   console.log("Usage: node [script.js] --targetPath [path] [options]");
   console.log("Options:");
   console.log(" --unpack             Unpack files");
@@ -41,4 +37,4 @@ export function usage() {
   console.log(
     " --enable-[ruleName]  Enable specific analysis rules, e.g., --enable-prototypePollution"
   );
-}
+};

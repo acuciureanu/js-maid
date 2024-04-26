@@ -35,7 +35,7 @@ async function performAnalysis(
   let results = [];
   try {
     results = await analysisService.run(fileData, matchingRules, rulesConfig);
-    console.log(results);
+    console.log(JSON.stringify(results, null, 2));
   } catch (error) {
     console.error('Error during analysis:', error);
     return; // Optionally, handle more gracefully depending on requirements

@@ -13,7 +13,15 @@ export default class TemplateLiteralRule implements Rule {
    * @param matchingRules - The matching rules to apply.
    * @returns The updated processing context.
    */
-  apply(node: any, context: ProcessingContext, matchingRules: MatchingRule[]): ProcessingContext {
+  apply(
+    node: any,
+    context: ProcessingContext,
+    matchingRules: MatchingRule[]
+  ): ProcessingContext {
+    if (context === null) {
+      throw new Error("Context cannot be null");
+    }
+
     if (node.type === "TemplateLiteral") {
       let combinedParts = "";
 
@@ -30,7 +38,7 @@ export default class TemplateLiteralRule implements Rule {
       }
 
       // Apply each matching rule to the combined template literal content
-      matchingRules.forEach(rule => {
+      matchingRules.forEach((rule) => {
         rule.apply(combinedParts, context);
       });
     }

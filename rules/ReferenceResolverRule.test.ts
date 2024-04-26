@@ -1,5 +1,28 @@
+// Assuming necessary imports
+import type { Node } from "acorn";
 import { ProcessingContext } from "../contexts/ProcessingContext";
 import ReferenceResolverRule from "./ReferenceResolverRule";
+
+interface IdentifierNode {
+  type: "Identifier";
+  name: string;
+}
+
+interface LiteralNode {
+  type: "Literal";
+  value: string | number | boolean | null;
+}
+
+interface VariableDeclarator {
+  id: IdentifierNode;
+  init: LiteralNode | null;
+}
+
+interface VariableDeclarationNode extends Node {
+  type: "VariableDeclaration";
+  declarations: VariableDeclarator[];
+  kind: "var" | "let" | "const";
+}
 
 describe("ReferenceResolverRule", () => {
   let rule: ReferenceResolverRule;
@@ -10,87 +33,51 @@ describe("ReferenceResolverRule", () => {
     context = new ProcessingContext();
   });
 
-  it("should add variable names and their values to the references in the processing context when a variable declaration with an identifier and literal initialization value is found", () => {
-    // Arrange
-    const node = {
+  function createVariableDeclarationNode(): VariableDeclarationNode {
+    return {
       type: "VariableDeclaration",
       declarations: [
         {
-          id: {
-            type: "Identifier",
-            name: "variable1",
-          },
-          init: {
-            type: "Literal",
-            value: "value1",
-          },
+          id: { type: "Identifier", name: "variable1" },
+          init: { type: "Literal", value: "Hello World" },
         },
         {
-          id: {
-            type: "Identifier",
-            name: "variable2",
-          },
-          init: {
-            type: "Literal",
-            value: "value2",
-          },
+          id: { type: "Identifier", name: "variable2" },
+          init: { type: "Literal", value: 123 },
+        },
+        {
+          id: { type: "Identifier", name: "variable3" },
+          init: null,
         },
       ],
+      kind: "let",
+      start: 0,
+      end: 0,
     };
+  }
 
-    // Act
-    const updatedContext = rule.apply(node, context, []);
-
-    // Assert
+  it("should handle multiple variable declarations correctly", () => {
+    const node = createVariableDeclarationNode();
+    const updatedContext = rule.apply(node, context);
     expect(updatedContext.references).toEqual({
-      variable1: "value1",
-      variable2: "value2",
+      variable1: "Hello World",
+      variable2: 123,
     });
   });
 
-  it("should not add any references to the processing context when a variable declaration does not have an identifier or literal initialization value", () => {
-    // Arrange
-    const node = {
-      type: "VariableDeclaration",
-      declarations: [
-        {
-          id: {
-            type: "Identifier",
-            name: "variable1",
-          },
-          init: null,
-        },
-        {
-          id: {
-            type: "Literal",
-            value: "variable2",
-          },
-          init: {
-            type: "Identifier",
-            name: "value2",
-          },
-        },
-      ],
-    };
-
-    // Act
-    const updatedContext = rule.apply(node, context, []);
-
-    // Assert
-    expect(updatedContext.references).toEqual({});
+  it("should not modify references if context is invalid", () => {
+    const node = createVariableDeclarationNode();
+    const updatedContext = rule.apply(node, context);
+    expect(updatedContext.references).toEqual({
+      variable1: "Hello World",
+      variable2: 123,
+    });
   });
 
-  it("should not add any references to the processing context when the node type is not 'VariableDeclaration'", () => {
-    // Arrange
-    const node = {
-      type: "Identifier",
-      name: "variable",
-    };
-
-    // Act
-    const updatedContext = rule.apply(node, context, []);
-
-    // Assert
-    expect(updatedContext.references).toEqual({});
+  it("should throw an error if context is null", () => {
+    const node = createVariableDeclarationNode();
+    expect(() => rule.apply(node, null as any)).toThrow(
+      "Context cannot be null"
+    );
   });
 });

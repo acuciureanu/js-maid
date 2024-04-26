@@ -1,3 +1,4 @@
+import type { Identifier, Literal, Node } from "acorn";
 import { ProcessingContext } from "../contexts/ProcessingContext";
 import { secretsPatterns } from "../patterns/SecretsPatterns";
 import { urlPattern } from "../patterns/UrlPatterns";
@@ -20,26 +21,42 @@ describe('LiteralRule', () => {
   });
 
   it('should add URLs from string literals to the context', () => {
-    const node = { type: 'Literal', value: 'Check out https://example.com for more info' };
-    rule.apply(node, context, matchingRules);
+    const literal: Literal = {
+      type: 'Literal', value: 'Check out https://example.com for more info',
+      start: 0,
+      end: 0
+    };
+    rule.apply(literal, context, matchingRules);
     expect(context.getData('endpoints')).toContain('https://example.com');
   });
 
   it('should not add data when the literal does not contain URLs', () => {
-    const node = { type: 'Literal', value: 'Hello, world!' };
-    rule.apply(node, context, matchingRules);
+    const literal: Literal = {
+      type: 'Literal', value: 'Hello, world!',
+      start: 0,
+      end: 0
+    };
+    rule.apply(literal, context, matchingRules);
     expect(context.getData('endpoints')).toEqual([]);
   });
 
   it('should not process non-string literals', () => {
-    const node = { type: 'Literal', value: 42 };
-    rule.apply(node, context, matchingRules);
+    const literal: Literal = {
+      type: 'Literal', value: 42,
+      start: 0,
+      end: 0
+    };
+    rule.apply(literal, context, matchingRules);
     expect(context.getData('endpoints')).toEqual([]);
   });
 
   it('should not process non-literal nodes', () => {
-    const node = { type: 'Identifier', name: 'x' };
-    rule.apply(node, context, matchingRules);
+    const identifier: Identifier = {
+      type: 'Identifier', name: 'x',
+      start: 0,
+      end: 0
+    };
+    rule.apply(identifier, context, matchingRules);
     expect(context.getData('endpoints')).toEqual([]);
   });
 });

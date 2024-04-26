@@ -1,5 +1,7 @@
+import type { Node } from "acorn";
 import { ProcessingContext } from "../contexts/ProcessingContext";
 import type { Rule } from "../interfaces/Rule";
+import { isVariableDeclaration } from "../utils/NodeUtil";
 
 export default class ReferenceResolverRule implements Rule {
   /**
@@ -11,7 +13,11 @@ export default class ReferenceResolverRule implements Rule {
    * @param context - The processing context.
    * @returns The updated processing context.
    */
-  apply(node: any, context: ProcessingContext): ProcessingContext {
+  apply(node: Node, context: ProcessingContext): ProcessingContext {
+    if (context === null) {
+      throw new Error("Context cannot be null");
+    }
+
     if (!context || typeof context.references !== "object") {
       console.error(
         "Invalid context or context.references is not initialized."
@@ -20,7 +26,7 @@ export default class ReferenceResolverRule implements Rule {
     }
 
     // Process only if node is a VariableDeclaration
-    if (node.type === "VariableDeclaration") {
+    if (isVariableDeclaration(node)) {
       node.declarations.forEach((declaration: any) => {
         if (
           declaration.id &&

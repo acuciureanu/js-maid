@@ -1,4 +1,9 @@
-import type { Node } from "acorn";
+import type {
+  Node,
+  MemberExpression,
+  AssignmentExpression,
+  CallExpression,
+} from "acorn";
 import { ProcessingContext } from "../contexts/ProcessingContext";
 import type { Rule } from "../interfaces/Rule";
 import escodegen from "escodegen";
@@ -14,6 +19,10 @@ export default class PrototypePollutionRule implements Rule {
    * @returns Updated processing context with new findings.
    */
   apply(node: Node, context: ProcessingContext): ProcessingContext {
+    if (context === null) {
+      throw new Error("Context cannot be null");
+    }
+
     const handleDetection = (message: string, category: string, node: Node) => {
       const finding = {
         type: "Prototype Pollution",
@@ -60,91 +69,111 @@ export default class PrototypePollutionRule implements Rule {
     return context;
   }
 
-  private checkForDangerousPropertyAccess(node: Node, handleDetection: (message: string, category: string, node: Node) => void) {
-    if (
-      node.type === MemberExpression &&
-      node.computed === true &&  // Ensure the property access is computed
-      node.property.type === "Literal" && // The property being accessed is a literal
-      typeof node.property.value === 'string' && // The literal is a string
-      ["__proto__", "prototype", "constructor"].includes(node.property.value) // Dangerous properties
-    ) {
-      handleDetection(
-        `Dangerous property access: ${node.property.value}`,
-        "Critical Vulnerability",
-        node
-      );
+  private isMemberExpression = (node: Node): node is MemberExpression =>
+    node.type === "MemberExpression";
+
+  private isAssignmentExpression = (node: Node): node is AssignmentExpression =>
+    node.type === "AssignmentExpression";
+
+  private isCallExpression = (node: Node): node is CallExpression =>
+    node.type === "CallExpression";
+
+  private checkForDangerousPropertyAccess(
+    node: Node,
+    handleDetection: (message: string, category: string, node: Node) => void
+  ) {
+    if (this.isMemberExpression(node) && node.computed) {
+      if (
+        node.property.type === "Literal" &&
+        typeof node.property.value === "string"
+      ) {
+        const dangerousProperties = ["__proto__", "prototype", "constructor"];
+        if (dangerousProperties.includes(node.property.value)) {
+          handleDetection(
+            `Dangerous property access: ${node.property.value}`,
+            "Critical Vulnerability",
+            node
+          );
+        }
+      }
     }
   }
-  
 
   private checkForDirectPrototypeAssignments(
-    node: any,
-    handleDetection: Function
+    node: Node,
+    handleDetection: (message: string, category: string, node: Node) => void
   ) {
-    if (
-      node.type === "AssignmentExpression" &&
-      node.left.type === "MemberExpression" &&
-      node.left.object.type === "MemberExpression" &&
-      node.left.object.object.type === "Identifier" &&
-      node.left.object.object.name === "Object" &&
-      node.left.object.property.type === "Identifier" &&
-      node.left.object.property.name === "prototype"
-    ) {
-      handleDetection(
-        "Direct Object.prototype modification detected!",
-        "Critical Vulnerability",
-        node
-      );
-    }
-
-    if (
-      node.type === "AssignmentExpression" &&
-      node.left.type === "MemberExpression" &&
-      node.left.computed === true &&
-      node.left.property.type === "Literal" &&
-      node.left.property.value === "__proto__"
-    ) {
-      handleDetection(
-        "Direct __proto__ assignment detected!",
-        "Critical Vulnerability",
-        node
-      );
-    }
-  }
-
-  private checkForDangerousMethodCalls(node: any, handleDetection: Function) {
-    if (
-      node.type === "CallExpression" &&
-      node.callee.type === "MemberExpression"
-    ) {
-      const { object, property } = node.callee;
+    if (this.isAssignmentExpression(node)) {
       if (
-        object.type === "Identifier" &&
-        object.name === "Object" &&
-        (property.name === "assign" || property.name === "setPrototypeOf")
+        this.isMemberExpression(node.left) &&
+        node.left.computed &&
+        node.left.property.type === "Literal" &&
+        node.left.property.value === "__proto__"
       ) {
         handleDetection(
-          `Object.${property.name} can manipulate prototypes. Analyze arguments carefully for untrusted input.`,
-          "Potential Exploit",
+          "Direct __proto__ assignment detected!",
+          "Critical Vulnerability",
+          node
+        );
+      }
+      if (
+        this.isMemberExpression(node.left) &&
+        this.isMemberExpression(node.left.object) &&
+        node.left.object.property.type === "Identifier" &&
+        node.left.object.property.name === "prototype" &&
+        node.left.object.object.type === "Identifier" &&
+        node.left.object.object.name === "Object"
+      ) {
+        handleDetection(
+          "Direct Object.prototype modification detected!",
+          "Critical Vulnerability",
           node
         );
       }
     }
   }
 
-  private checkForURLParameterGadgets(node: any, handleDetection: Function) {
-    if (
-      node.type === "CallExpression" &&
-      node.callee.type === "MemberExpression" &&
-      node.callee.property.name === "getParameter" &&
-      node.arguments.length > 0 &&
-      node.arguments[0].type === "Literal"
-    ) {
-      handleDetection(
-        "Prototype pollution possible if URL parameter is user-controlled.",
-        "Potential Exploit",
-        node
-      );
+  private checkForDangerousMethodCalls(
+    node: Node,
+    handleDetection: (message: string, category: string, node: Node) => void
+  ) {
+    if (this.isCallExpression(node)) {
+      if (
+        this.isMemberExpression(node.callee) &&
+        node.callee.property.type === "Identifier" &&
+        node.callee.property.name === "assign"
+      ) {
+        handleDetection(
+          "Dangerous Object.assign call detected!",
+          "Critical Vulnerability",
+          node
+        );
+      }
+    }
+  }
+
+  private checkForURLParameterGadgets(
+    node: Node,
+    handleDetection: (message: string, category: string, node: Node) => void
+  ) {
+    if (this.isCallExpression(node)) {
+      if (
+        this.isMemberExpression(node.callee) &&
+        node.callee.property.type === "Identifier" &&
+        node.callee.property.name === "parse"
+      ) {
+        const arg = node.arguments[0];
+        if (arg && arg.type === "Literal" && typeof arg.value === "string") {
+          const parsed = JSON.parse(arg.value);
+          if (parsed.__proto__) {
+            handleDetection(
+              "Dangerous JSON.parse call detected!",
+              "Critical Vulnerability",
+              node
+            );
+          }
+        }
+      }
     }
   }
 
