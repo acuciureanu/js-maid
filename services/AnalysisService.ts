@@ -1,71 +1,85 @@
-import * as acorn from "acorn";
-import FileDatasource from "../datasources/FileDatasource";
-import RuleEngine from "../engines/RuleEngine";
+import PrototypePollutionRule from "../rules/PrototypePollutionRule";
 import LiteralRule from "../rules/LiteralRule";
-import ReferenceResolverRule from "../rules/ReferenceResolverRule";
 import TemplateLiteralRule from "../rules/TemplateLiteralRule";
+import ReferenceResolverRule from "../rules/ReferenceResolverRule";
 import MatchingRule from "../rules/MatchingRule";
+import RuleEngine from "../engines/RuleEngine";
 import type { AnalysisResult } from "../models/AnalysisResult";
+import * as acorn from "acorn";
 
-class AnalysisService {
-  private targetPath: string;
+export default class AnalysisService {
+  public async run(
+    fileData: { filePath: string; fileContent: string }[],
+    matchingRules: MatchingRule[],
+    rulesConfig: { [ruleName: string]: boolean }
+  ): Promise<AnalysisResult[]> {
+    console.log("Starting analysis of files");
 
-  constructor(targetPath: string) {
-    this.targetPath = targetPath;
-  }
+    const results = await Promise.all(
+      fileData.map(async ({ filePath, fileContent }) => {
+        console.log(`Processing file: ${filePath}`);
+        try {
+          const ast = acorn.parse(fileContent, {
+            ecmaVersion: "latest",
+            sourceType: "module",
+          });
 
-  /**
-   * Runs the analysis on the target files using the provided matching rules.
-   * @param matchingRules - An array of matching rules to apply during the analysis.
-   * @returns A promise that resolves to an array of analysis results.
-   */
-  public async run(matchingRules: MatchingRule[]): Promise<AnalysisResult[]> {
-    const files = new FileDatasource().loadFiles(this.targetPath);
-    const results: AnalysisResult[] = [];
+          const engine = new RuleEngine(ast)
+            .addRule(new LiteralRule())
+            .addRule(new TemplateLiteralRule())
+            .addRule(new ReferenceResolverRule());
 
-    files.forEach((file) => {
-      try {
-        const ast = acorn.parse(file.fileContent, {
-          ecmaVersion: "latest",
-          sourceType: "module",
-        });
+          if (rulesConfig["prototypePollution"]) {
+            console.log("Adding Prototype Pollution rule");
+            engine.addRule(new PrototypePollutionRule());
+          }
 
-        // Create a new rule engine and add the rules to it
-        // If you add a new rule, you need to add it here too
-        const engine = new RuleEngine(ast)
-          .addRule(new LiteralRule())
-          .addRule(new TemplateLiteralRule())
-          .addRule(new ReferenceResolverRule());
+          const context = engine.process(matchingRules);
+          const fileMatches: { [ruleType: string]: Set<string> } = {};
+          let hasRuleMatches = false;
 
-        const context = engine.process(matchingRules);
+          matchingRules.forEach((rule) => {
+            const ruleData = context.getData(rule.type);
+            if (ruleData && ruleData.length > 0) {
+              fileMatches[rule.type] = new Set(ruleData);
+              hasRuleMatches = true;
+            }
+          });
 
-        const fileMatches: { [ruleType: string]: Set<string> | string[] } = {};
-        matchingRules.forEach((rule) => {
-          const ruleData = context.getData(rule.type);
-          fileMatches[rule.type] =
-            rule.type === "endpoints" ? new Set(ruleData) : ruleData;
-        });
-
-        const hasMatches = Object.values(fileMatches).some((matches) =>
-          matches instanceof Set ? matches.size > 0 : matches.length > 0
-        );
-        if (hasMatches) {
           const finalMatches: { [ruleType: string]: string[] } = {};
           Object.entries(fileMatches).forEach(([ruleType, matches]) => {
-            finalMatches[ruleType] = Array.from(matches);
+            if (matches.size > 0) {
+              finalMatches[ruleType] = Array.from(matches);
+            }
           });
-          results.push({ filename: file.filePath, matches: finalMatches });
-        }
-      } catch (error) {
-        console.error(
-          `An error occurred while analyzing file ${file.filePath}:`,
-          error
-        );
-      }
-    });
 
-    return results;
+          const prototypePollutionFindings = context.getData(
+            "prototypePollutionFindings"
+          );
+          const hasPrototypePollutionFindings =
+            prototypePollutionFindings && prototypePollutionFindings.length > 0;
+
+          if (hasRuleMatches || hasPrototypePollutionFindings) {
+            return {
+              filename: filePath,
+              matches: finalMatches,
+              prototypePollutionFindings: hasPrototypePollutionFindings
+                ? prototypePollutionFindings
+                : [],
+            };
+          }
+        } catch (error) {
+          console.error(
+            `An error occurred while analyzing file ${filePath}:`,
+            error
+          );
+        }
+        return null;
+      })
+    );
+
+    return results.filter(
+      (result): result is AnalysisResult => result !== null
+    );
   }
 }
-
-export default AnalysisService;

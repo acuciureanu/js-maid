@@ -16,7 +16,7 @@ Options:
 Note: Use the flags to enable specific features as needed.
 ```
 
-## Download latest compiled binaries.
+## Download latest compiled binaries
 
 If you want to run the tool straight away, there are compiled binaries for you [here](https://github.com/acuciureanu/js-maid/releases/latest)
 
@@ -83,8 +83,6 @@ In our application, we use the `MatchingRule` feature to create specific instanc
 const urlMatchingRule = new MatchingRule("endpoints", urlPattern);
 const secretsMatchingRule = new MatchingRule("secrets", secretsPatterns);
 ```
-
-
 
 In the above code:
 

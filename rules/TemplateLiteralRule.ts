@@ -6,7 +6,22 @@ import type MatchingRule from "./MatchingRule";
  * Represents a rule that applies to template literals.
  */
 export default class TemplateLiteralRule implements Rule {
-  apply(node: any, context: ProcessingContext, matchingRules: MatchingRule[]): ProcessingContext {
+  /**
+   * Applies the template literal rule to the given node.
+   * @param node - The node to apply the rule to.
+   * @param context - The processing context.
+   * @param matchingRules - The matching rules to apply.
+   * @returns The updated processing context.
+   */
+  apply(
+    node: any,
+    context: ProcessingContext,
+    matchingRules: MatchingRule[]
+  ): ProcessingContext {
+    if (context === null) {
+      throw new Error("Context cannot be null");
+    }
+
     if (node.type === "TemplateLiteral") {
       let combinedParts = "";
 
@@ -23,8 +38,8 @@ export default class TemplateLiteralRule implements Rule {
       }
 
       // Apply each matching rule to the combined template literal content
-      matchingRules.forEach(rule => {
-        rule.applyMatch(combinedParts, context);
+      matchingRules.forEach((rule) => {
+        rule.apply(combinedParts, context);
       });
     }
 

@@ -1,51 +1,34 @@
-/**
- * Represents a processing context that stores data and references.
- */
 export class ProcessingContext {
-  private data: { [key: string]: any[] } = {};
-
-  /**
-   * Adds an item to the data associated with the specified key.
-   * If the key does not exist, a new array is created.
-   * @param key - The key to associate the item with.
-   * @param item - The item to add to the data.
-   */
-  addData(key: string, item: any) {
-    if (!this.data[key]) {
-      this.data[key] = [];
-    }
-    this.data[key].push(item);
-  }
-
-  /**
-   * Retrieves the data associated with the specified key.
-   * If the key does not exist, an empty array is returned.
-   * @param key - The key to retrieve the data for.
-   * @returns An array containing the data associated with the key.
-   */
-  getData(key: string): any[] {
-    return this.data[key] || [];
-  }
-
-  /**
-   * Stores references to other objects.
-   */
+  private data: { [key: string]: Set<string> } = {};
   public references: { [key: string]: any } = {};
 
-  /**
-   * Compiles results into a simplified format.
-   * @param filename - The current file being processed.
-   * @returns Compiled results for the file.
-   */
-  compileResults(filename: string): { filename: string, matches: any[] } {
-    const matches: any[] = [];
-
-    for (const key in this.data) {
-      if (this.data.hasOwnProperty(key)) {
-        matches.push(...this.data[key]);
-      }
+  addData(key: string, item: any) {
+    const serializedItem = this.serializeItem(item);
+    if (!this.data[key]) {
+      this.data[key] = new Set();
     }
+    this.data[key].add(serializedItem);
+  }
 
-    return { filename, matches };
+  getData(key: string): any[] {
+    if (!this.data[key]) return [];
+    return Array.from(this.data[key]).map((item) => JSON.parse(item));
+  }
+
+  serializeItem(item: any): string {
+    if (
+      item &&
+      typeof item === "object" &&
+      item.type &&
+      item.message &&
+      item.location
+    ) {
+      return JSON.stringify({
+        type: item.type,
+        message: item.message,
+        location: item.location,
+      });
+    }
+    return JSON.stringify(item);
   }
 }

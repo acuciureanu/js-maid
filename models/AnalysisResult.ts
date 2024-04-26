@@ -14,5 +14,5 @@ export interface AnalysisResult {
   matches: {
     [ruleType: string]: string[];
   };
+  prototypePollutionFindings: object[];
 }
-  
