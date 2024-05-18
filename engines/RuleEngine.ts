@@ -1,4 +1,4 @@
-import type { Program } from "acorn";
+import type { Node, Program } from "acorn";
 import { ProcessingContext } from "../contexts/ProcessingContext";
 import type { Rule } from "../interfaces/Rule";
 import type MatchingRule from "../rules/MatchingRule";
@@ -14,7 +14,7 @@ export default class RuleEngine {
   }
 
   processNode(
-    node: any,
+    node: Node,
     context: ProcessingContext,
     matchingRules: MatchingRule[]
   ): ProcessingContext {

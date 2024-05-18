@@ -37,7 +37,7 @@ export default class PrototypePollutionRule implements Rule {
       context.addData("prototypePollutionFindings", finding);
     };
 
-    const processNode = (node: any, visitedNodes = new Set()) => {
+    const processNode = (node: Node, visitedNodes = new Set()) => {
       if (!node || typeof node !== "object" || visitedNodes.has(node)) return;
       visitedNodes.add(node);
 
@@ -56,7 +56,7 @@ export default class PrototypePollutionRule implements Rule {
         "test",
         "update",
       ].forEach((key) => {
-        const childNode = node[key];
+        const childNode = (node as any)[key];
         if (Array.isArray(childNode)) {
           childNode.forEach((subNode) => processNode(subNode, visitedNodes));
         } else if (childNode && typeof childNode === "object") {
@@ -178,7 +178,7 @@ export default class PrototypePollutionRule implements Rule {
   }
 
   private recursiveNodeProcessing(
-    node: any,
+    node: Node,
     processNode: Function,
     visitedNodes = new Set()
   ) {
@@ -197,13 +197,13 @@ export default class PrototypePollutionRule implements Rule {
       "test",
       "update",
     ].forEach((key) => {
-      if (node[key]) {
-        if (Array.isArray(node[key])) {
-          node[key].forEach((child: any) =>
+      if ((node as any)[key]) {
+        if (Array.isArray((node as any)[key])) {
+          (node as any)[key].forEach((child: any) =>
             processNode(child, processNode, visitedNodes)
           );
         } else {
-          processNode(node[key], processNode, visitedNodes);
+          processNode((node as any)[key], processNode, visitedNodes);
         }
       }
     });
