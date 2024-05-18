@@ -1,3 +1,4 @@
+import type { Node } from "acorn";
 import type { ProcessingContext } from "../contexts/ProcessingContext";
 import type MatchingRule from "../rules/MatchingRule";
 
@@ -11,5 +12,5 @@ export interface Rule {
    * @param context The processing context.
    * @returns The updated processing context.
    */
-  apply(node: any, context: ProcessingContext, matchingRules: MatchingRule[]): ProcessingContext;
+  apply(node: Node, context: ProcessingContext, matchingRules: MatchingRule[]): ProcessingContext;
 }
