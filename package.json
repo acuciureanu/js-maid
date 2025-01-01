@@ -19,6 +19,6 @@
     "acorn": "^8.11.3",
     "chalk": "^5.3.0",
     "escodegen": "^2.1.0",
-    "webcrack": "^2.13.0"
+    "webcrack": "^2.14.1"
   }
 }
